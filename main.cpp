@@ -43,34 +43,6 @@ public:
     cur_blind_score_req = blind_score_reqs[static_cast<size_t>(cur_blind)];
   }
 
-  bool
-  is_flush(const std::array<std::vector<const Card *>, ALL_SUITS.size()> &hand,
-           int threshold = 5) {
-    for (size_t i = 0; i < ALL_SUITS.size(); ++i) {
-      if (hand[i].size() >= threshold) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  bool is_straight(const std::array<std::vector<const Card *>,
-                                    ALL_CARD_RANKS.size()> &hand) {
-    int count_for_straight = 5;
-    int count = 0;
-    for (size_t i = 0; i <= ALL_CARD_RANKS.size(); i++) {
-      if (!hand[i].empty()) {
-        count++;
-      } else {
-        count = 0;
-      }
-      if (count >= count_for_straight) {
-        return true;
-      }
-    }
-    return false;
-  }
-
   std::array<std::vector<const Card *>, ALL_CARD_RANKS.size()>
   get_cards_by_rank(const std::vector<Card> &hand) {
     std::array<std::vector<const Card *>, ALL_CARD_RANKS.size()> ranked_hand;
