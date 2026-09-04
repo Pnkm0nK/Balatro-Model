@@ -43,7 +43,7 @@ void test_pairs() {
   assert(pairs[0][1] == &cards[1]);
 }
 
-void test_triples() {
+void test_three_of_a_kind() {
   const std::vector<Card> cards = {
       {Suit::HEARTS, CardRank::KING},
       {Suit::CLUBS, CardRank::KING},
@@ -51,12 +51,29 @@ void test_triples() {
       {Suit::DIAMONDS, CardRank::TWO},
   };
 
-  const auto triples = find_triples(group_by_rank(cards));
+  const auto three_of_a_kind = find_three_of_a_kind(group_by_rank(cards));
 
-  assert(triples.size() == 1);
-  assert(triples[0][0] == &cards[0]);
-  assert(triples[0][1] == &cards[1]);
-  assert(triples[0][2] == &cards[2]);
+  assert(three_of_a_kind.size() == 1);
+  assert(three_of_a_kind[0][0] == &cards[0]);
+  assert(three_of_a_kind[0][1] == &cards[1]);
+  assert(three_of_a_kind[0][2] == &cards[2]);
+}
+
+void test_four_of_a_kind() {
+  const std::vector<Card> cards = {
+      {Suit::HEARTS, CardRank::ACE},
+      {Suit::CLUBS, CardRank::ACE},
+      {Suit::SPADES, CardRank::ACE},
+      {Suit::DIAMONDS, CardRank::ACE},
+      {Suit::HEARTS, CardRank::TWO},
+  };
+
+  const auto four_of_a_kind = find_four_of_a_kind(group_by_rank(cards));
+
+  assert(four_of_a_kind.size() == 1);
+  for (std::size_t i = 0; i < 4; ++i) {
+    assert(four_of_a_kind[0][i] == &cards[i]);
+  }
 }
 
 void test_four_card_flush() {
@@ -132,7 +149,7 @@ void test_full_house() {
   };
   const auto hand = group_by_rank(cards);
   const auto full_houses =
-      find_full_house(find_pairs(hand), find_triples(hand));
+      find_full_house(find_pairs(hand), find_three_of_a_kind(hand));
 
   assert(full_houses.size() == 1);
   for (std::size_t i = 0; i < 5; ++i) {
@@ -142,7 +159,8 @@ void test_full_house() {
 
 int main() {
   test_pairs();
-  test_triples();
+  test_three_of_a_kind();
+  test_four_of_a_kind();
   test_four_card_flush();
   test_five_card_flush();
   test_four_card_straight();

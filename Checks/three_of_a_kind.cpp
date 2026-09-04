@@ -1,9 +1,9 @@
-// Finds triples
+// Finds three of a kind
 #include "../core.hpp"
 #include <array>
 #include <vector>
 
-std::vector<std::array<const Card *, 3>> find_triples(
+std::vector<std::array<const Card *, 3>> find_three_of_a_kind(
     const std::array<std::vector<const Card *>, ALL_CARD_RANKS.size()> &hand) {
   std::vector<std::array<const Card *, 3>> result;
 
