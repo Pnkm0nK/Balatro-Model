@@ -82,6 +82,11 @@ void GameState::play_hand(const std::vector<Card> &hand) {
   auto cards_by_rank = get_cards_by_rank(hand);
   auto cards_by_suit = get_cards_by_suit(hand);
   auto pairs = find_pairs(cards_by_rank);
+  auto triples = find_triples(cards_by_rank);
+  if (!pairs.empty()) {
+    auto two_pair = find_two_pair(pairs) auto full_house =
+        find_full_house(pairs, triples)
+  }
 }
 
 int main() {
