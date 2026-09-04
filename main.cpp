@@ -3,20 +3,12 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
-#include <unordered_map>
 #include <vector>
 
 constexpr std::array<int, 12> hand_chips = {5,  10, 20,  30,  30,  35,
                                             40, 60, 100, 120, 140, 160};
 constexpr std::array<int, 13> hand_mult = {1, 2, 2, 3,  4,  4, 4,
                                            7, 8, 8, 12, 14, 16};
-constexpr std::unordered_map<int, HandType> card_qnt_to_handtype = {
-    {2, HandType::PAIR},
-    {3, HandType::THREE_OF_A_KIND},
-    {4, HandType::FOUR_OF_A_KIND},
-    {5, HandType::FIVE_OF_A_KIND},
-};
-
 class GameState {
 public:
   Deck deck;
@@ -105,7 +97,8 @@ public:
         });
     size_t max_index = std::distance(ranked_hand.begin(), max_it);
     int max_val = max_it->size();
-    bool is_flush = this->is_flush(suit_freqs, max_val);
+    auto cards_by_rank = get_cards_by_rank(hand);
+    auto cards_by_suit = get_cards_by_suit(hand);
   }
 };
 
