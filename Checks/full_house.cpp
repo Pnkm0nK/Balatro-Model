@@ -1,4 +1,5 @@
-#include "../Card.cpp"
+#include "../checks.hpp"
+#include "../core.hpp"
 #include <array>
 #include <vector>
 
