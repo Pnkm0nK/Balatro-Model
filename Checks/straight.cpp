@@ -1,11 +1,11 @@
-// Cheks is this straight
+#include "../checks.hpp"
 #include "../core.hpp"
 #include <array>
 #include <vector>
 
 std::vector<std::array<const Card *, 5>> find_straight(
     const std::array<std::vector<const Card *>, ALL_CARD_RANKS.size()> &hand,
-    std::size_t threshold = 5) {
+    std::size_t threshold) {
   std::vector<std::array<const Card *, 5>> result;
   std::array<const Card *, 5> straight{};
   std::size_t count = 0;

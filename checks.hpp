@@ -6,11 +6,11 @@
 
 std::vector<std::array<const Card *, 5>>
 find_flush(const std::array<std::vector<const Card *>, ALL_SUITS.size()> &hand,
-           int threshold = 5);
+           std::size_t threshold = 5);
 
 std::vector<std::array<const Card *, 5>> find_straight(
     const std::array<std::vector<const Card *>, ALL_CARD_RANKS.size()> &hand,
-    int threshold = 5);
+    std::size_t threshold = 5);
 
 std::vector<std::array<const Card *, 2>> find_pairs(
     const std::array<std::vector<const Card *>, ALL_CARD_RANKS.size()> &hand);

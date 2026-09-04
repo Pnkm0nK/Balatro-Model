@@ -1,4 +1,4 @@
-// Cheks is this flush
+#include "../checks.hpp"
 #include "../core.hpp"
 #include <algorithm>
 #include <array>
@@ -6,7 +6,7 @@
 
 std::vector<std::array<const Card *, 5>>
 find_flush(const std::array<std::vector<const Card *>, ALL_SUITS.size()> &hand,
-           std::size_t threshold = 5) {
+           std::size_t threshold) {
   std::vector<std::array<const Card *, 5>> result;
 
   for (const auto &suited_cards : hand) {
