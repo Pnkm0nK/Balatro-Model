@@ -29,7 +29,7 @@ enum class HandType : uint8_t {
   FOUR_OF_A_KIND,
   STRAIGHT_FLUSH, // straight + flush
   ROYAL_FLUSH,    // ace high straight flush
-  FIVE_OF_A_KIND,
+  FIVE_OF_A_KIND, // five of same rank
   FLUSH_HOUSE, // Single suit. 3 cards are same rank and other 2 are same rank.
   FLUSH_FIVE   // All cards are the same
 };
