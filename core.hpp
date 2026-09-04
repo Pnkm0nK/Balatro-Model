@@ -33,6 +33,11 @@ public:
   Deck();
 };
 
+struct HandEval {
+  std::vector<const Card *> cards_scored;
+  HandType hand_type;
+};
+
 class GameState {
 public:
   Deck deck;
@@ -55,6 +60,8 @@ public:
 
   std::array<std::vector<const Card *>, ALL_SUITS.size()>
   get_cards_by_suit(const std::vector<Card> &hand);
+
+  HandEval evaluate_hand(const std::vector<Card> &hand);
 
   void play_hand(const std::vector<Card> &hand);
 };

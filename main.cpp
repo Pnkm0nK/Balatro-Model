@@ -2,9 +2,9 @@
 #include "core.hpp"
 #include "types.hpp"
 
-#include <algorithm>
 #include <array>
 #include <cstddef>
+#include <stdexcept>
 #include <vector>
 
 GameState::GameState(int money, int hands_left, int discards_left)
@@ -33,6 +33,94 @@ GameState::get_cards_by_suit(const std::vector<Card> &hand) {
     suit_hand[static_cast<size_t>(card.suit)].push_back(&card);
   }
   return suit_hand;
+}
+
+HandEval GameState::evaluate_hand(const std::vector<Card> &hand) {
+  if (hand.empty()) {
+    throw std::invalid_argument("Cannot evaluate hand: hand is empty");
+  }
+
+  // find all necessary combos
+  auto cards_by_rank = get_cards_by_rank(hand);
+  auto cards_by_suit = get_cards_by_suit(hand);
+  auto pairs = find_pairs(cards_by_rank);
+  auto triples = find_three_of_a_kind(cards_by_rank);
+  auto fours = find_four_of_a_kind(cards_by_rank);
+  auto fives = find_five_of_a_kind(cards_by_rank);
+  auto flushes = find_flush(cards_by_suit);
+  auto straights = find_straight(cards_by_rank);
+  // cascade top-down for best hand and check interactions of combos
+  // to decide on the hand type
+
+  // flush five
+  if (!flushes.empty() && !fives.empty()) {
+    return {{fives[0].begin(), fives[0].end()}, HandType::FLUSH_FIVE};
+  }
+  auto full_houses = find_full_house(pairs, triples);
+
+  // flush_house
+  if (!flushes.empty() && !full_houses.empty()) {
+    return {{full_houses[0].begin(), full_houses[0].end()},
+            HandType::FLUSH_HOUSE};
+  }
+
+  // five of a kind
+  if (!fives.empty()) {
+    return {{fives[0].begin(), fives[0].end()}, HandType::FIVE_OF_A_KIND};
+  }
+  // TODO: ADD royal flush
+
+  // straight flush
+  if (!straights.empty() && !flushes.empty()) {
+    return {{flushes[0].begin(), flushes[0].end()}, HandType::STRAIGHT_FLUSH};
+  }
+
+  // four of a kind
+  if (!fours.empty()) {
+    return {{fours[0].begin(), fours[0].end()}, HandType::FOUR_OF_A_KIND};
+  }
+
+  // full house
+  if (!full_houses.empty()) {
+    return {{full_houses[0].begin(), full_houses[0].end()},
+            HandType::FULL_HOUSE};
+  }
+
+  // flush
+  if (!flushes.empty()) {
+    return {{flushes[0].begin(), flushes[0].end()}, HandType::FLUSH};
+  }
+
+  // straight
+  if (!straights.empty()) {
+    return {{straights[0].begin(), straights[0].end()}, HandType::STRAIGHT};
+  }
+
+  // three of a kind
+  if (!triples.empty()) {
+    return {{triples[0].begin(), triples[0].end()}, HandType::THREE_OF_A_KIND};
+  }
+
+  // two pair
+  if (pairs.size() == 2) {
+    return {{pairs[0][0], pairs[0][1], pairs[1][0], pairs[1][1]},
+            HandType::TWO_PAIR};
+  }
+
+  // pair
+  if (!pairs.empty()) {
+    return {{pairs[0].begin(), pairs[0].end()}, HandType::PAIR};
+  }
+
+  // high card: scan from Ace down to Two
+  for (int i = static_cast<int>(ALL_CARD_RANKS.size()) - 1; i >= 0; --i) {
+    if (!cards_by_rank[i].empty()) {
+      return {{cards_by_rank[i][0]}, HandType::HIGH_CARD};
+    }
+  }
+
+  throw std::logic_error(
+      "Internal error: high card not found in non-empty hand");
 }
 
 void GameState::play_hand(const std::vector<Card> &hand) {
@@ -66,29 +154,9 @@ void GameState::play_hand(const std::vector<Card> &hand) {
   4. Joker scoring
   */
   int score = 0;
-  HandType hand_type = HandType::HIGH_CARD;
-  std::vector<std::vector<Card>> ranked_hand(ALL_CARD_RANKS.size());
-  for (const auto &card : hand) {
-    ranked_hand[static_cast<size_t>(card.rank)].push_back(card);
-  }
-  // find max number of cards with same rank
-  auto max_it = std::max_element(
-      ranked_hand.begin(), ranked_hand.end(),
-      [](const std::vector<Card> &a, const std::vector<Card> &b) {
-        return a.size() < b.size();
-      });
-  size_t max_index = std::distance(ranked_hand.begin(), max_it);
-  int max_val = max_it->size();
-  auto cards_by_rank = get_cards_by_rank(hand);
-  auto cards_by_suit = get_cards_by_suit(hand);
-  auto pairs = find_pairs(cards_by_rank);
-  auto triples = find_triples(cards_by_rank);
-  if (!pairs.empty()) {
-    auto two_pair = find_two_pair(pairs) auto full_house =
-        find_full_house(pairs, triples)
-  }
 }
 
 int main() {
   // deck.deal();
+  return 0;
 }
