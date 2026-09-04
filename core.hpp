@@ -31,6 +31,8 @@ public:
   std::vector<Card> deck;
 
   Deck();
+
+  std::vector<Card> deal(int cards_in_hand, int max_cards_in_hand);
 };
 
 struct HandEval {
@@ -49,7 +51,7 @@ public:
   int hands_left;
   int discards_left;
   Blind cur_blind;
-  int round_score;
+  unsigned long long round_score;
   std::array<double, 3> blind_score_reqs;
   double cur_blind_score_req;
 

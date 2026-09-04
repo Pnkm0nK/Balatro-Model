@@ -2,6 +2,7 @@
 #include "core.hpp"
 #include "types.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <stdexcept>
@@ -68,7 +69,13 @@ HandEval GameState::evaluate_hand(const std::vector<Card> &hand) {
   if (!fives.empty()) {
     return {{fives[0].begin(), fives[0].end()}, HandType::FIVE_OF_A_KIND};
   }
-  // TODO: ADD royal flush
+
+  // royal flush
+  auto royal_flushes = find_royal_flush(cards_by_suit);
+  if (!royal_flushes.empty()) {
+    return {{royal_flushes[0].begin(), royal_flushes[0].end()},
+            HandType::ROYAL_FLUSH};
+  }
 
   // straight flush
   if (!straights.empty() && !flushes.empty()) {
@@ -153,10 +160,39 @@ void GameState::play_hand(const std::vector<Card> &hand) {
   3. Effects in hand
   4. Joker scoring
   */
-  int score = 0;
+  const auto &[cards_scored, hand_type] = evaluate_hand(hand);
+  uint chips = hand_chips[static_cast<size_t>(hand_type)];
+  uint mult = hand_mult[static_cast<size_t>(hand_type)];
+  for (const Card &card : hand) {
+    bool is_scoring = std::find(cards_scored.begin(), cards_scored.end(),
+                                &card) != cards_scored.end();
+    if (is_scoring) {
+      chips += card.chips;
+    }
+  }
+  this->round_score += chips * mult;
+  this->hands_left--;
 }
 
-int main() {
-  // deck.deal();
-  return 0;
-}
+void GameState::discard()
+
+    void GameState::start_new_round() {
+  bool round_end = false;
+  while (!round_end) {
+    std::vector<Card> hand = deck.deal(0, max_cards_in_hand);
+    // TODO: choose cards to play
+    std::vector<Card> chosen_cards = {hand[0], hand[1], hand[2]};
+
+    // TODO: deal with discards
+
+    play_hand(chosen_cards);
+    if (this->round_score >= cur_blind_score_req) {
+      round_end = true;
+      this->round++;
+    }
+  }
+
+  int main() {
+    // deck.deal();
+    return 0;
+  }

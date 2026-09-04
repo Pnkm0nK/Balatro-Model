@@ -10,3 +10,14 @@ Deck::Deck() {
     }
   }
 }
+
+std::vector<Card> Deck::deal(int cards_in_hand, int max_cards_in_hand) {
+  int cards_to_deal = max_cards_in_hand - cards_in_hand;
+  std::vector<Card> dealt_cards;
+  while (cards_to_deal > 0 && deck.size() > 0) {
+    dealt_cards.push_back(deck.back());
+    deck.pop_back();
+    cards_to_deal--;
+  }
+  return dealt_cards;
+}
