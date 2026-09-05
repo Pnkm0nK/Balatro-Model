@@ -68,9 +68,11 @@ public:
 
   void play_hand(const std::vector<Card> &hand);
 
-  std::vector<Card> GameState::discard(
+  std::vector<Card> discard(
       std::vector<Card> hand,
       std::vector<std::size_t> chosen_card_indices);
+
+  bool lose_round();
 
   void start_new_round();
 };

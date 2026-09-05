@@ -4,7 +4,9 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <cstddef>
+#include <iostream>
 #include <stdexcept>
 #include <vector>
 
@@ -186,23 +188,55 @@ std::vector<Card> GameState::discard(
   return hand;
 }
 
-    void GameState::start_new_round() {
-  bool round_end = false;
-  while (!round_end) {
+bool GameState::lose_round() {
+  std::cout << "You lost the round.\n"
+            << "[R] Restart game\n"
+            << "[Q] Quit\n"
+            << "Choice: ";
+
+  char choice;
+  while (std::cin >> choice) {
+    switch (std::tolower(static_cast<unsigned char>(choice))) {
+    case 'r':
+      *this = GameState{};
+      return true;
+    case 'q':
+      return false;
+    default:
+      std::cout << "Enter R to restart or Q to quit: ";
+    }
+  }
+
+  return false;
+}
+
+void GameState::start_new_round() {
+  bool round_won = false;
+  while (hands_left > 0 && !round_won) {
     std::vector<Card> hand = deck.deal(0, max_cards_in_hand);
+    if (hand.size() < 3) {
+      break;
+    }
+
     // TODO: choose cards to play
     std::vector<Card> chosen_cards = {hand[0], hand[1], hand[2]};
 
     // TODO: deal with discards
 
     play_hand(chosen_cards);
-    if (this->round_score >= cur_blind_score_req) {
-      round_end = true;
-      this->round++;
+    if (round_score >= cur_blind_score_req) {
+      round_won = true;
+      ++round;
     }
   }
 
-  int main() {
-    // deck.deal();
-    return 0;
+  if (!round_won && lose_round()) {
+    start_new_round();
   }
+}
+
+int main() {
+  GameState game;
+  game.start_new_round();
+  return 0;
+}
