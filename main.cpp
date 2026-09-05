@@ -230,8 +230,8 @@ bool GameState::lose_round() {
 }
 
 void GameState::start_new_round() {
-  bool round_won = false;
-  while (hands_left > 0 && !round_won) {
+  bool round_end = false;
+  while (hands_left > 0 && !round_end) {
     std::vector<Card> hand = deck.deal(0, max_cards_in_hand);
     // TODO: choose cards to play or discard
     std::vector<size_t> chosen_cards_indices;
@@ -258,8 +258,12 @@ void GameState::start_new_round() {
     hand = discard(hand, chosen_cards_indices);
 
     if (this->round_score >= cur_blind_score_req) {
+      win_round();
       round_end = true;
-      this->round++;
+    } else if (this->hands_left == 0) {
+      if (!lose_round()) {
+        return;
+      }
     }
   }
 }
