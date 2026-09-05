@@ -28,6 +28,7 @@ std::vector<std::array<const Card *, 4>> find_four_of_a_kind(
 std::vector<std::array<const Card *, 5>>
 find_full_house(const std::vector<std::array<const Card *, 2>> &pairs,
                 const std::vector<std::array<const Card *, 3>> &triples);
+
 std::vector<std::array<const Card *, 5>> find_five_of_a_kind(
     const std::array<std::vector<const Card *>, ALL_CARD_RANKS.size()>
         &hand_by_rank);

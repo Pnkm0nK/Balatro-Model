@@ -60,7 +60,7 @@ inline constexpr std::array<CardRank, 13> ALL_CARD_RANKS = {
 inline constexpr std::array<Suit, 4> ALL_SUITS = {Suit::HEARTS, Suit::DIAMONDS,
                                                   Suit::CLUBS, Suit::SPADES};
 
-enum class Blind : uint8_t { SMALL, BIG, BOSS };
+enum class Blind : uint8_t { SMALL, BIG, BOSS, SHOWDOWN };
 
 inline constexpr std::array<Blind, 3> ALL_BLINDS = {Blind::SMALL, Blind::BIG,
                                                     Blind::BOSS};

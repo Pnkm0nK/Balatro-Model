@@ -10,9 +10,9 @@
 #include <stdexcept>
 #include <vector>
 
-GameState::GameState(int money, int hands_left, int discards_left)
+GameState::GameState(int money, int hands, int discards)
     : ante(1), money(money), round(0), max_cards_in_hand(8),
-      max_cards_played(5), hands_left(hands_left), discards_left(discards_left),
+      max_cards_played(5), hands(hands), discards(discards),
       cur_blind(Blind::SMALL), round_score(0) {
   for (size_t i = 0; i < ALL_BLINDS.size(); ++i) {
     blind_score_reqs[i] = ante_base_chips[ante] * blind_multipliers[i];
@@ -176,9 +176,28 @@ void GameState::play_hand(const std::vector<Card> &hand) {
   this->hands_left--;
 }
 
-std::vector<Card> GameState::discard(
-    std::vector<Card> hand,
-  std::vector<std::size_t> chosen_card_indices) {
+void GameState::win_round() {
+  this->money +=
+      this->hands_left + gold_per_blind[static_cast<size_t>(cur_blind)];
+  this->round_score = 0;
+  this->round++;
+  if (round % 3 == 0) {
+    this->ante++;
+    for (size_t i = 0; i < ALL_BLINDS.size(); ++i) {
+      blind_score_reqs[i] = ante_base_chips[ante] * blind_multipliers[i];
+    }
+  }
+  this->cur_blind =
+      static_cast<Blind>((static_cast<int>(this->cur_blind) + 1) % 3);
+  this->cur_blind_score_req =
+      this->blind_score_reqs[static_cast<size_t>(this->cur_blind)];
+  this->hands_left = this->hands;
+  this->discards_left = this->discards;
+}
+
+std::vector<Card>
+GameState::discard(std::vector<Card> hand,
+                   std::vector<std::size_t> chosen_card_indices) {
   std::sort(chosen_card_indices.rbegin(), chosen_card_indices.rend());
 
   for (const std::size_t index : chosen_card_indices) {
@@ -214,24 +233,34 @@ void GameState::start_new_round() {
   bool round_won = false;
   while (hands_left > 0 && !round_won) {
     std::vector<Card> hand = deck.deal(0, max_cards_in_hand);
-    if (hand.size() < 3) {
-      break;
+    // TODO: choose cards to play or discard
+    std::vector<size_t> chosen_cards_indices;
+    std::cout << "Choose card indices separated by spaces: " << std::endl;
+    size_t chosen_card_index;
+    while (std::cin >> chosen_card_index &&
+           chosen_cards_indices.size() < max_cards_played) {
+      chosen_cards_indices.push_back(chosen_card_index);
     }
+    std::cout << "Enter 'd' if you want to discard, or any other key if you "
+                 "want to play the selected hand: "
+              << std::endl;
+    char option;
+    std::cin >> option;
+    option = std::tolower(option);
 
-    // TODO: choose cards to play
-    std::vector<Card> chosen_cards = {hand[0], hand[1], hand[2]};
-
-    // TODO: deal with discards
-
-    play_hand(chosen_cards);
-    if (round_score >= cur_blind_score_req) {
-      round_won = true;
-      ++round;
+    if (option != 'd') {
+      std::vector<Card> chosen_cards;
+      for (size_t index : chosen_cards_indices) {
+        chosen_cards.push_back(hand[index]);
+      }
+      play_hand(chosen_cards);
     }
-  }
+    hand = discard(hand, chosen_cards_indices);
 
-  if (!round_won && lose_round()) {
-    start_new_round();
+    if (this->round_score >= cur_blind_score_req) {
+      round_end = true;
+      this->round++;
+    }
   }
 }
 

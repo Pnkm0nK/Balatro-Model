@@ -11,6 +11,7 @@ inline constexpr std::array<int, 12> hand_chips = {5,  10, 20,  30,  30,  35,
                                                    40, 60, 100, 120, 140, 160};
 inline constexpr std::array<int, 13> hand_mult = {1, 2, 2, 3,  4,  4, 4,
                                                   7, 8, 8, 12, 14, 16};
+inline constexpr std::array<int, 4> gold_per_blind = {3, 4, 5, 8};
 inline constexpr std::array<int, 9> ante_base_chips = {
     100, 300, 800, 2000, 5000, 11000, 20000, 35000, 50000};
 inline constexpr std::array<double, 3> blind_multipliers = {1.0, 1.5, 2.0};
@@ -49,6 +50,8 @@ public:
   int round;
   int max_cards_in_hand;
   int max_cards_played;
+  int hands;
+  int discards;
   int hands_left;
   int discards_left;
   Blind cur_blind;
@@ -56,7 +59,7 @@ public:
   std::array<double, 3> blind_score_reqs;
   double cur_blind_score_req;
 
-  GameState(int money = 4, int hands_left = 4, int discards_left = 4);
+  GameState(int money = 4, int hands = 4, int discards = 4);
 
   std::array<std::vector<const Card *>, ALL_CARD_RANKS.size()>
   get_cards_by_rank(const std::vector<Card> &hand);
@@ -68,11 +71,12 @@ public:
 
   void play_hand(const std::vector<Card> &hand);
 
-  std::vector<Card> discard(
-      std::vector<Card> hand,
-      std::vector<std::size_t> chosen_card_indices);
+  std::vector<Card> discard(std::vector<Card> hand,
+                            std::vector<std::size_t> chosen_card_indices);
 
   bool lose_round();
 
   void start_new_round();
+
+  void win_round();
 };
