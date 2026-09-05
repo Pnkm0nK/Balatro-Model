@@ -1,5 +1,7 @@
 #include "core.hpp"
 #include "types.hpp"
+#include <algorithm>
+#include <random>
 #include <vector>
 
 Deck::Deck() {
@@ -9,9 +11,17 @@ Deck::Deck() {
       deck.emplace_back(suit, rank);
     }
   }
+  shuffle();
+}
+
+void Deck::shuffle() {
+  static std::mt19937 generator(std::random_device{}());
+  std::shuffle(deck.begin(), deck.end(), generator);
 }
 
 std::vector<Card> Deck::deal(int cards_in_hand, int max_cards_in_hand) {
+  shuffle();
+
   int cards_to_deal = max_cards_in_hand - cards_in_hand;
   std::vector<Card> dealt_cards;
   while (cards_to_deal > 0 && deck.size() > 0) {

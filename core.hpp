@@ -34,6 +34,8 @@ public:
 
   Deck();
 
+  void shuffle();
+
   std::vector<Card> deal(int cards_in_hand, int max_cards_in_hand);
 };
 
