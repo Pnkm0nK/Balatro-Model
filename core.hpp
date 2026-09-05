@@ -78,7 +78,9 @@ public:
 
   bool lose_round();
 
-  void start_new_round();
+  bool start_new_round();
 
   void win_round();
+
+  void game_loop();
 };

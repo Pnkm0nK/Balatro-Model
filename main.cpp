@@ -13,22 +13,22 @@
 namespace {
 
 const char *card_rank_name(CardRank rank) {
-  constexpr std::array rank_names = {"2", "3", "4", "5", "6", "7", "8",
+  constexpr std::array rank_names = {"2", "3",  "4", "5", "6", "7", "8",
                                      "9", "10", "J", "Q", "K", "A"};
   return rank_names[static_cast<std::size_t>(rank)];
 }
 
 const char *card_suit_name(Suit suit) {
-  constexpr std::array suit_names = {"H", "D", "C", "S"};
+  constexpr std::array suit_names = {"♥", "♦", "♣", "♠"};
   return suit_names[static_cast<std::size_t>(suit)];
 }
 
 const char *hand_type_name(HandType hand_type) {
   constexpr std::array hand_type_names = {
-      "High card",      "Pair",          "Two pair",     "Three of a kind",
-      "Straight",       "Flush",         "Full house",   "Four of a kind",
-      "Straight flush", "Royal flush",   "Five of a kind",
-      "Flush house",    "Flush five",
+      "High card",      "Pair",        "Two pair",       "Three of a kind",
+      "Straight",       "Flush",       "Full house",     "Four of a kind",
+      "Straight flush", "Royal flush", "Five of a kind", "Flush house",
+      "Flush five",
   };
   return hand_type_names[static_cast<std::size_t>(hand_type)];
 }
@@ -53,7 +53,7 @@ void print_cards(const char *label, const std::vector<Card> &cards) {
     if (index != 0) {
       std::cout << ", ";
     }
-    std::cout << card_rank_name(cards[index].rank)
+    std::cout << card_rank_name(cards[index].rank) << " "
               << card_suit_name(cards[index].suit);
   }
   std::cout << "]\n";
@@ -61,13 +61,13 @@ void print_cards(const char *label, const std::vector<Card> &cards) {
 
 void print_round_status(const GameState &game) {
   std::cout << "\n========================================\n"
-            << "Round: " << game.round + 1 << " | Blind: "
-            << blind_name(game.cur_blind) << "\n"
+            << "Round: " << game.round + 1
+            << " | Blind: " << blind_name(game.cur_blind) << "\n"
             << "Score: " << game.round_score << " / "
             << game.cur_blind_score_req << "\n"
             << "Hands left: " << game.hands_left
-            << " | Discards left: " << game.discards_left
-            << " | Money: $" << game.money << "\n"
+            << " | Discards left: " << game.discards_left << " | Money: $"
+            << game.money << "\n"
             << "========================================\n";
 }
 
@@ -75,9 +75,8 @@ void print_round_status(const GameState &game) {
 
 GameState::GameState(int money, int hands, int discards)
     : ante(1), money(money), round(0), max_cards_in_hand(8),
-      max_cards_played(5), hands(hands), discards(discards),
-      hands_left(hands), discards_left(discards), cur_blind(Blind::SMALL),
-      round_score(0) {
+      max_cards_played(5), hands(hands), discards(discards), hands_left(hands),
+      discards_left(discards), cur_blind(Blind::SMALL), round_score(0) {
   for (size_t i = 0; i < ALL_BLINDS.size(); ++i) {
     blind_score_reqs[i] = ante_base_chips[ante] * blind_multipliers[i];
   }
@@ -289,11 +288,10 @@ bool GameState::lose_round() {
       std::cout << "Enter R to restart or Q to quit: ";
     }
   }
-
   return false;
 }
 
-void GameState::start_new_round() {
+bool GameState::start_new_round() {
   bool round_end = false;
   while (hands_left > 0 && !round_end) {
     std::vector<Card> hand = deck.deal(0, max_cards_in_hand);
@@ -302,10 +300,17 @@ void GameState::start_new_round() {
 
     // TODO: choose cards to play or discard
     std::vector<size_t> chosen_cards_indices;
-    std::cout << "Choose card indices separated by spaces: \n";
+    chosen_cards_indices.reserve(5);
+    std::cout << "Choose card indices separated by spaces. Any non-digit fixes "
+                 "selection: \n";
     size_t chosen_card_index;
-    while (std::cin >> chosen_card_index &&
-           chosen_cards_indices.size() < max_cards_played) {
+    while (chosen_cards_indices.size() < max_cards_played) {
+      char choice;
+      std::cin >> choice;
+      if (!std::isdigit(static_cast<unsigned char>(choice))) {
+        break;
+      }
+      chosen_card_index = static_cast<size_t>(choice) - '0';
       chosen_cards_indices.push_back(chosen_card_index);
     }
     std::cout << "Enter 'd' if you want to discard, or any other key if you "
@@ -341,17 +346,22 @@ void GameState::start_new_round() {
 
     if (this->round_score >= cur_blind_score_req) {
       win_round();
-      round_end = true;
+      return true;
     } else if (this->hands_left == 0) {
-      if (!lose_round()) {
-        return;
-      }
+      return lose_round();
     }
+  }
+}
+
+void GameState::game_loop() {
+  bool game_end = false;
+  while (!game_end) {
+    game_end = !start_new_round();
   }
 }
 
 int main() {
   GameState game;
-  game.start_new_round();
+  game.game_loop();
   return 0;
 }
