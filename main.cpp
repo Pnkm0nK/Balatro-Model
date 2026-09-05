@@ -10,10 +10,74 @@
 #include <stdexcept>
 #include <vector>
 
+namespace {
+
+const char *card_rank_name(CardRank rank) {
+  constexpr std::array rank_names = {"2", "3", "4", "5", "6", "7", "8",
+                                     "9", "10", "J", "Q", "K", "A"};
+  return rank_names[static_cast<std::size_t>(rank)];
+}
+
+const char *card_suit_name(Suit suit) {
+  constexpr std::array suit_names = {"H", "D", "C", "S"};
+  return suit_names[static_cast<std::size_t>(suit)];
+}
+
+const char *hand_type_name(HandType hand_type) {
+  constexpr std::array hand_type_names = {
+      "High card",      "Pair",          "Two pair",     "Three of a kind",
+      "Straight",       "Flush",         "Full house",   "Four of a kind",
+      "Straight flush", "Royal flush",   "Five of a kind",
+      "Flush house",    "Flush five",
+  };
+  return hand_type_names[static_cast<std::size_t>(hand_type)];
+}
+
+const char *blind_name(Blind blind) {
+  constexpr std::array blind_names = {"Small", "Big", "Boss"};
+  return blind_names[static_cast<std::size_t>(blind)];
+}
+
+void print_hand(const std::vector<Card> &hand) {
+  std::cout << "Cards in hand:\n";
+  for (std::size_t index = 0; index < hand.size(); ++index) {
+    const Card &card = hand[index];
+    std::cout << "  [" << index << "] " << card_rank_name(card.rank)
+              << card_suit_name(card.suit) << "\n";
+  }
+}
+
+void print_cards(const char *label, const std::vector<Card> &cards) {
+  std::cout << label << ": [";
+  for (std::size_t index = 0; index < cards.size(); ++index) {
+    if (index != 0) {
+      std::cout << ", ";
+    }
+    std::cout << card_rank_name(cards[index].rank)
+              << card_suit_name(cards[index].suit);
+  }
+  std::cout << "]\n";
+}
+
+void print_round_status(const GameState &game) {
+  std::cout << "\n========================================\n"
+            << "Round: " << game.round + 1 << " | Blind: "
+            << blind_name(game.cur_blind) << "\n"
+            << "Score: " << game.round_score << " / "
+            << game.cur_blind_score_req << "\n"
+            << "Hands left: " << game.hands_left
+            << " | Discards left: " << game.discards_left
+            << " | Money: $" << game.money << "\n"
+            << "========================================\n";
+}
+
+} // namespace
+
 GameState::GameState(int money, int hands, int discards)
     : ante(1), money(money), round(0), max_cards_in_hand(8),
       max_cards_played(5), hands(hands), discards(discards),
-      cur_blind(Blind::SMALL), round_score(0) {
+      hands_left(hands), discards_left(discards), cur_blind(Blind::SMALL),
+      round_score(0) {
   for (size_t i = 0; i < ALL_BLINDS.size(); ++i) {
     blind_score_reqs[i] = ante_base_chips[ante] * blind_multipliers[i];
   }
@@ -233,9 +297,12 @@ void GameState::start_new_round() {
   bool round_end = false;
   while (hands_left > 0 && !round_end) {
     std::vector<Card> hand = deck.deal(0, max_cards_in_hand);
+    print_round_status(*this);
+    print_hand(hand);
+
     // TODO: choose cards to play or discard
     std::vector<size_t> chosen_cards_indices;
-    std::cout << "Choose card indices separated by spaces: " << std::endl;
+    std::cout << "Choose card indices separated by spaces: \n";
     size_t chosen_card_index;
     while (std::cin >> chosen_card_index &&
            chosen_cards_indices.size() < max_cards_played) {
@@ -253,7 +320,22 @@ void GameState::start_new_round() {
       for (size_t index : chosen_cards_indices) {
         chosen_cards.push_back(hand[index]);
       }
+
+      print_cards("Played cards", chosen_cards);
+      const HandEval hand_eval = evaluate_hand(chosen_cards);
+      std::cout << "Combination: " << hand_type_name(hand_eval.hand_type)
+                << "\n";
+
+      const auto score_before = round_score;
       play_hand(chosen_cards);
+      std::cout << "Score gained: " << round_score - score_before << "\n";
+      print_round_status(*this);
+    } else {
+      std::vector<Card> discarded_cards;
+      for (size_t index : chosen_cards_indices) {
+        discarded_cards.push_back(hand[index]);
+      }
+      print_cards("Discarded cards", discarded_cards);
     }
     hand = discard(hand, chosen_cards_indices);
 
