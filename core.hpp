@@ -7,8 +7,9 @@
 
 inline constexpr std::array<int, 13> base_chips = {2, 3,  4,  5,  6,  7, 8,
                                                    9, 10, 10, 10, 10, 11};
-inline constexpr std::array<int, 12> hand_chips = {5,  10, 20,  30,  30,  35,
-                                                   40, 60, 100, 120, 140, 160};
+// Royal flush uses the same base chips as straight flush.
+inline constexpr std::array<int, 13> hand_chips = {
+    5, 10, 20, 30, 30, 35, 40, 60, 100, 100, 120, 140, 160};
 inline constexpr std::array<int, 13> hand_mult = {1, 2, 2, 3,  4,  4, 4,
                                                   7, 8, 8, 12, 14, 16};
 inline constexpr std::array<int, 4> gold_per_blind = {3, 4, 5, 8};
@@ -58,6 +59,10 @@ public:
   int discards_left;
   Blind cur_blind;
   unsigned long long round_score;
+  // Extremely high total scores may overflow unsigned long long and wrap around.
+  unsigned long long total_score = 0;
+  unsigned long long best_hand_score = 0;
+  std::size_t hands_played = 0;
   std::array<double, 3> blind_score_reqs;
   double cur_blind_score_req;
 
