@@ -174,7 +174,17 @@ void GameState::play_hand(const std::vector<Card> &hand) {
   this->hands_left--;
 }
 
-void GameState::discard()
+std::vector<Card> GameState::discard(
+    std::vector<Card> hand,
+  std::vector<std::size_t> chosen_card_indices) {
+  std::sort(chosen_card_indices.rbegin(), chosen_card_indices.rend());
+
+  for (const std::size_t index : chosen_card_indices) {
+    hand.erase(hand.begin() + index);
+  }
+
+  return hand;
+}
 
     void GameState::start_new_round() {
   bool round_end = false;

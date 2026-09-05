@@ -2,6 +2,7 @@
 
 #include "types.hpp"
 #include <array>
+#include <cstddef>
 #include <vector>
 
 inline constexpr std::array<int, 13> base_chips = {2, 3,  4,  5,  6,  7, 8,
@@ -66,4 +67,10 @@ public:
   HandEval evaluate_hand(const std::vector<Card> &hand);
 
   void play_hand(const std::vector<Card> &hand);
+
+  std::vector<Card> GameState::discard(
+      std::vector<Card> hand,
+      std::vector<std::size_t> chosen_card_indices);
+
+  void start_new_round();
 };
