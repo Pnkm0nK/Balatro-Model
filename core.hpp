@@ -3,6 +3,7 @@
 #include "types.hpp"
 #include <array>
 #include <cstddef>
+#include <unordered_map>
 #include <vector>
 
 inline constexpr std::array<int, 13> base_chips = {2, 3,  4,  5,  6,  7, 8,
@@ -17,7 +18,25 @@ inline constexpr std::array<int, 9> ante_base_chips = {
     100, 300, 800, 2000, 5000, 11000, 20000, 35000, 50000};
 inline constexpr std::array<double, 3> blind_multipliers = {1.0, 1.5, 2.0};
 
-struct Card {
+class GameState;
+
+enum class Context {
+  ROUND,
+  SHOP,
+};
+
+class Item {
+public:
+  int buy_cost;
+  int sell_price;
+
+  virtual ~Item() = default;
+};
+
+enum class CardRarity { COMMON, UNCOMMON, RARE };
+
+class Card : public Item {
+public:
   Suit suit;
   CardRank rank;
   Edition edition;
@@ -45,28 +64,87 @@ struct HandEval {
   HandType hand_type;
 };
 
+class Voucher {
+public:
+  int buy_cost;
+  virtual void activate(GameState &state) = 0;
+};
+
+struct ScoringContext {
+  const HandEval &hand_eval;
+  unsigned long long chips = 0;
+  unsigned long long mult = 0;
+};
+
+class Joker : public Item {
+public:
+  virtual ~Joker() = 0;
+
+  virtual void on_pre_score(const std::vector<Card> &played_cards,
+                            HandEval &hand_eval, ScoringContext &ctx,
+                            GameState &state) {}
+
+  virtual void on_card_scored(const Card &card, ScoringContext &ctx,
+                              GameState &state) {}
+
+  virtual void on_card_in_hand(const Card &card, ScoringContext &ctx,
+                               GameState &state) {}
+
+  virtual void on_joker_score(ScoringContext &ctx, GameState &state) {}
+
+  virtual void on_discard(const std::vector<Card> &discarded,
+                          GameState &state) {}
+
+  virtual void on_sale(Item &sold_item, GameState &state) {}
+
+  virtual void on_round_start(GameState &state) {}
+  virtual void on_round_end(GameState &state) {}
+};
+
+inline Joker::~Joker() = default;
+
+class Shop {
+private:
+  int max_item_slots;
+  int max_voucher_slots;
+  int max_pack_slots;
+  std::vector<Item *> available_items;
+  std::vector<Voucher *> available_vouchers;
+  Shop(int max_item_slots, int max_voucher_slots, int max_pack_slots);
+};
+
 class GameState {
 public:
+  Context context;
   Deck deck;
   int ante;
   int money;
+  Blind cur_blind;
   int round;
   int max_cards_in_hand;
   int max_cards_played;
   int hands;
+  int max_joker_slots;
+  int max_inventory_slots;
   int discards;
   int hands_left;
   int discards_left;
-  Blind cur_blind;
+
+  std::vector<Joker *> jokers;
+  std::vector<Item *> inventory;
+  std::unordered_map<HandType, int> hand_play_counts;
+
   unsigned long long round_score;
-  // Extremely high total scores may overflow unsigned long long and wrap around.
+  // Extremely high total scores may overflow unsigned long long and wrap
+  // around.
   unsigned long long total_score = 0;
   unsigned long long best_hand_score = 0;
   std::size_t hands_played = 0;
   std::array<double, 3> blind_score_reqs;
   double cur_blind_score_req;
 
-  GameState(int money = 4, int hands = 4, int discards = 4);
+  GameState(int money = 4, int hands = 4, int discards = 4,
+            int max_joker_slots = 5, int max_inventory_slots = 2);
 
   std::array<std::vector<const Card *>, ALL_CARD_RANKS.size()>
   get_cards_by_rank(const std::vector<Card> &hand);

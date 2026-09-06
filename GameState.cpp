@@ -73,10 +73,14 @@ void print_round_status(const GameState &game) {
 
 } // namespace
 
-GameState::GameState(int money, int hands, int discards)
+GameState::GameState(int money, int hands, int discards, int max_joker_slots,
+                     int max_inventory_slots)
     : ante(1), money(money), round(0), max_cards_in_hand(8),
-      max_cards_played(5), hands(hands), discards(discards), hands_left(hands),
-      discards_left(discards), cur_blind(Blind::SMALL), round_score(0) {
+      max_cards_played(5), max_joker_slots(max_joker_slots),
+      max_inventory_slots(max_inventory_slots), hands(hands),
+      discards(discards), hands_left(hands), discards_left(discards),
+      cur_blind(Blind::SMALL), round_score(0) {
+  context = Context::ROUND;
   for (size_t i = 0; i < ALL_BLINDS.size(); ++i) {
     blind_score_reqs[i] = ante_base_chips[ante] * blind_multipliers[i];
   }
@@ -225,17 +229,38 @@ void GameState::play_hand(const std::vector<Card> &hand) {
   3. Effects in hand
   4. Joker scoring
   */
-  const auto &[cards_scored, hand_type] = evaluate_hand(hand);
-  uint chips = hand_chips[static_cast<size_t>(hand_type)];
-  uint mult = hand_mult[static_cast<size_t>(hand_type)];
+  HandEval eval = evaluate_hand(hand);
+  ScoringContext ctx{.hand_eval = eval,
+                     .chips = static_cast<unsigned long long>(
+                         hand_chips[static_cast<size_t>(eval.hand_type)]),
+                     .mult = static_cast<unsigned long long>(
+                         hand_mult[static_cast<size_t>(eval.hand_type)])};
+
+  const auto &[cards_scored, hand_type] = eval;
+
+  // 1. Pre-scoring
+  for (auto &joker : this->jokers) {
+    joker->on_pre_score(hand, eval, ctx, *this);
+  }
+
+  // 2. Dealt hand scoring
   for (const Card &card : hand) {
     bool is_scoring = std::find(cards_scored.begin(), cards_scored.end(),
                                 &card) != cards_scored.end();
     if (is_scoring) {
-      chips += card.chips;
+      ctx.chips += card.chips;
+      // TODO: add counting editions, effects and seals
+      for (auto &joker : this->jokers) {
+        joker->on_card_scored(card, ctx, *this);
+        joker->on_card_in_hand(card, ctx, *this);
+      }
     }
   }
-  const auto hand_score = static_cast<unsigned long long>(chips) * mult;
+
+  for (auto &joker : this->jokers) {
+    joker->on_joker_score(ctx, *this);
+  }
+  const auto hand_score = ctx.chips * ctx.mult;
   this->round_score += hand_score;
   this->total_score += hand_score;
   this->best_hand_score = std::max(this->best_hand_score, hand_score);
@@ -244,6 +269,19 @@ void GameState::play_hand(const std::vector<Card> &hand) {
 }
 
 void GameState::win_round() {
+  std::cout << "\n========================================\n"
+            << "              ROUND WON\n"
+            << "========================================\n"
+            << "Round reward:" << gold_per_blind[static_cast<size_t>(cur_blind)]
+            << "$" << std::endl
+            << hands_left << " hands left(1$ each):   " << "+" << hands_left
+            << "$" << std::endl
+            << "Cash out "
+            << hands_left + gold_per_blind[static_cast<size_t>(cur_blind)]
+            << "$ ?" << std::endl
+            << "Press any key" << std::endl;
+  char c;
+  std::cin >> c;
   this->money +=
       this->hands_left + gold_per_blind[static_cast<size_t>(cur_blind)];
   this->round_score = 0;
@@ -314,19 +352,19 @@ bool GameState::start_new_round() {
     const auto drawn_cards =
         deck.deal(static_cast<int>(hand.size()), max_cards_in_hand);
     hand.insert(hand.end(), drawn_cards.begin(), drawn_cards.end());
-    std::stable_sort(hand.begin(), hand.end(), [](const Card &left, const Card &right) {
-      if (left.rank != right.rank) {
-        return left.rank > right.rank;
-      }
-      return left.suit < right.suit;
-    });
+    std::stable_sort(hand.begin(), hand.end(),
+                     [](const Card &left, const Card &right) {
+                       if (left.rank != right.rank) {
+                         return left.rank > right.rank;
+                       }
+                       return left.suit < right.suit;
+                     });
     print_round_status(*this);
     print_hand(hand);
     if (hand.empty()) {
       return lose_round();
     }
 
-    // TODO: choose cards to play or discard
     std::vector<size_t> chosen_cards_indices;
     chosen_cards_indices.reserve(5);
     std::cout << "Choose card indices separated by spaces. Any non-digit fixes "
@@ -373,9 +411,10 @@ bool GameState::start_new_round() {
                 << "\n";
 
       const auto score_before = round_score;
+
       play_hand(chosen_cards);
+
       std::cout << "Score gained: " << round_score - score_before << "\n";
-      print_round_status(*this);
     } else {
       if (discards_left <= 0) {
         std::cout << "No discards left. Play a hand instead.\n";
@@ -400,9 +439,17 @@ bool GameState::start_new_round() {
   return lose_round();
 }
 
+void GameState::enter_shop() {
+  this->context = Context::SHOP;
+  available_jokers.
+}
+
 void GameState::game_loop() {
   bool game_end = false;
   while (!game_end) {
     game_end = !start_new_round();
+    if (!game_end) {
+      context = Context::SHOP;
+    }
   }
 }
