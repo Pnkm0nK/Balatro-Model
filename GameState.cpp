@@ -141,11 +141,12 @@ HandEval GameState::evaluate_hand(const std::vector<Card> &hand) {
   }
 
   // royal flush
-  auto royal_flushes = find_royal_flush(cards_by_suit);
-  if (!royal_flushes.empty()) {
-    return {{royal_flushes[0].begin(), royal_flushes[0].end()},
-            HandType::ROYAL_FLUSH};
-  }
+  // does nothing for the game itself
+  // auto royal_flushes = find_royal_flush(cards_by_suit);
+  // if (!royal_flushes.empty()) {
+  //   return {{royal_flushes[0].begin(), royal_flushes[0].end()},
+  //           HandType::ROYAL_FLUSH};
+  // }
 
   // straight flush
   if (!straights.empty() && !flushes.empty()) {

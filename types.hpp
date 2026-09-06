@@ -28,7 +28,6 @@ enum class HandType : uint8_t {
   FULL_HOUSE,
   FOUR_OF_A_KIND,
   STRAIGHT_FLUSH, // straight + flush
-  ROYAL_FLUSH,    // ace high straight flush
   FIVE_OF_A_KIND, // five of same rank
   FLUSH_HOUSE, // Single suit. 3 cards are same rank and other 2 are same rank.
   FLUSH_FIVE   // All cards are the same
@@ -59,6 +58,26 @@ inline constexpr std::array<CardRank, 13> ALL_CARD_RANKS = {
 
 inline constexpr std::array<Suit, 4> ALL_SUITS = {Suit::HEARTS, Suit::DIAMONDS,
                                                   Suit::CLUBS, Suit::SPADES};
+enum class Planet : uint8_t {
+  PLUTO,     // High Card
+  MERCURY,   // Pair
+  URANUS,    // Two Pair
+  VENUS,     // Three of a Kind
+  SATURN,    // Straight
+  JUPITER,   // Flush
+  EARTH,     // Full House
+  MARS,      // Four of a Kind
+  NEPTUNE,   // Straight Flush
+  PLANET_X,  // Five of a Kind
+  CERES,     // Flush House
+  ERIS,      // Flush Five
+  BLACK_HOLE // All Hands
+};
+
+inline constexpr std::array<Planet, 12> ALL_PLANETS = {
+    Planet::PLUTO,   Planet::MERCURY,  Planet::URANUS, Planet::VENUS,
+    Planet::SATURN,  Planet::JUPITER,  Planet::EARTH,  Planet::MARS,
+    Planet::NEPTUNE, Planet::PLANET_X, Planet::CERES,  Planet::ERIS};
 
 enum class Blind : uint8_t { SMALL, BIG, BOSS, SHOWDOWN };
 

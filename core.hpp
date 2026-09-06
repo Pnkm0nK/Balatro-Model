@@ -1,23 +1,28 @@
 #pragma once
-
 #include "types.hpp"
 #include <array>
 #include <cstddef>
 #include <memory>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
 inline constexpr std::array<int, 13> base_chips = {2, 3,  4,  5,  6,  7, 8,
                                                    9, 10, 10, 10, 10, 11};
 // Royal flush uses the same base chips as straight flush.
-inline constexpr std::array<int, 13> hand_chips = {
-    5, 10, 20, 30, 30, 35, 40, 60, 100, 100, 120, 140, 160};
-inline constexpr std::array<int, 13> hand_mult = {1, 2, 2, 3,  4,  4, 4,
-                                                  7, 8, 8, 12, 14, 16};
+inline constexpr std::array<int, 12> base_hand_chips = {
+    5, 10, 20, 30, 30, 35, 40, 60, 100, 120, 140, 160};
+inline constexpr std::array<int, 12> base_hand_mult = {1, 2, 2, 3,  4,  4,
+                                                       4, 7, 8, 12, 14, 16};
 inline constexpr std::array<int, 4> gold_per_blind = {3, 4, 5, 8};
 inline constexpr std::array<int, 9> ante_base_chips = {
     100, 300, 800, 2000, 5000, 11000, 20000, 35000, 50000};
 inline constexpr std::array<double, 3> blind_multipliers = {1.0, 1.5, 2.0};
+
+inline constexpr std::array<int, 12> planet_chip_additions = {
+    10, 15, 20, 20, 30, 15, 25, 30, 40, 35, 40, 50};
+inline constexpr std::array<int, 12> planet_mult_additions = {1, 1, 1, 2, 3, 2,
+                                                              2, 3, 4, 3, 4, 3};
 
 class GameState;
 
@@ -28,14 +33,13 @@ enum class Context {
 
 class Item {
 public:
+  std::string name;
   int buy_cost;
   int sell_price;
 
   virtual void activate(GameState &state);
 
   virtual ~Item() = default;
-
-  virtual void activate(GameState &state) {}
 
   // Non-copyable item types return nullptr until they implement cloning.
   virtual std::unique_ptr<Item> clone() const { return nullptr; }
@@ -52,6 +56,19 @@ public:
   void set_sell_price(int price);
 
   void activate(GameState &state) override;
+
+  std::unique_ptr<Item> clone() const override;
+};
+
+class PlanetCard : public Item {
+public:
+  Planet planet_type;
+  int chips_to_add;
+  int mult_to_add;
+
+  PlanetCard(Planet planet_type);
+
+  void activate(GameState &game_state) override;
 
   std::unique_ptr<Item> clone() const override;
 };
@@ -90,6 +107,7 @@ struct HandEval {
 class Voucher {
 public:
   int buy_cost;
+  virtual ~Voucher() = default;
   virtual void activate(GameState &state) = 0;
 };
 
@@ -129,12 +147,13 @@ public:
 inline Joker::~Joker() = default;
 
 class Shop {
-private:
+public:
   int max_item_slots;
   int max_voucher_slots;
   int max_pack_slots;
-  std::vector<Item *> available_items;
-  std::vector<Voucher *> available_vouchers;
+  std::vector<std::unique_ptr<Item>> available_items;
+  std::vector<std::unique_ptr<Voucher>> available_vouchers;
+
   Shop(int max_item_slots, int max_voucher_slots, int max_pack_slots);
 };
 
@@ -155,9 +174,15 @@ public:
   int hands_left;
   int discards_left;
 
+  std::array<int, 12> hand_chips = base_hand_chips;
+  std::array<int, 12> hand_mult = base_hand_mult;
+
+  std::array<int, 13> hand_levels;
+
   std::vector<Joker *> jokers;
   std::vector<std::unique_ptr<Item>> inventory;
-  // Independent snapshot of the last successfully used Tarot/Planet, not The Fool.
+  // Independent snapshot of the last successfully used Tarot/Planet, not The
+  // Fool.
   std::unique_ptr<Item> last_used_card;
   std::unordered_map<HandType, int> hand_play_counts;
 
