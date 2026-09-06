@@ -30,10 +30,12 @@ public:
   int buy_cost;
   int sell_price;
 
+  virtual void activate(GameState &state);
+
   virtual ~Item() = default;
 };
 
-enum class CardRarity { COMMON, UNCOMMON, RARE };
+enum class JokerRarity { COMMON, UNCOMMON, RARE };
 
 class Card : public Item {
 public:
@@ -78,6 +80,8 @@ struct ScoringContext {
 
 class Joker : public Item {
 public:
+  JokerRarity rarity;
+
   virtual ~Joker() = 0;
 
   virtual void on_pre_score(const std::vector<Card> &played_cards,
