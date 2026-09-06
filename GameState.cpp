@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <iostream>
 #include <stdexcept>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -266,6 +267,17 @@ void GameState::play_hand(const std::vector<Card> &hand) {
   this->best_hand_score = std::max(this->best_hand_score, hand_score);
   ++this->hands_played;
   this->hands_left--;
+}
+
+void GameState::use_item(std::size_t index) {
+  if (index >= inventory.size() || !inventory[index]) {
+    throw std::out_of_range("Invalid inventory item index");
+  }
+
+  // Free the slot, but keep the item alive until activation finishes.
+  auto item = std::move(inventory[index]);
+  inventory.erase(inventory.begin() + index);
+  item->activate(*this);
 }
 
 void GameState::win_round() {

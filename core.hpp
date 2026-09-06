@@ -3,6 +3,7 @@
 #include "types.hpp"
 #include <array>
 #include <cstddef>
+#include <memory>
 #include <unordered_map>
 #include <vector>
 
@@ -33,6 +34,26 @@ public:
   virtual void activate(GameState &state);
 
   virtual ~Item() = default;
+
+  virtual void activate(GameState &state) {}
+
+  // Non-copyable item types return nullptr until they implement cloning.
+  virtual std::unique_ptr<Item> clone() const { return nullptr; }
+};
+
+enum class TarotType;
+
+class TarotCard : public Item {
+public:
+  TarotType name;
+
+  TarotCard(TarotType name, int buy_cost, int sell_price);
+
+  void set_sell_price(int price);
+
+  void activate(GameState &state) override;
+
+  std::unique_ptr<Item> clone() const override;
 };
 
 enum class JokerRarity { COMMON, UNCOMMON, RARE };
@@ -135,7 +156,9 @@ public:
   int discards_left;
 
   std::vector<Joker *> jokers;
-  std::vector<Item *> inventory;
+  std::vector<std::unique_ptr<Item>> inventory;
+  // Independent snapshot of the last successfully used Tarot/Planet, not The Fool.
+  std::unique_ptr<Item> last_used_card;
   std::unordered_map<HandType, int> hand_play_counts;
 
   unsigned long long round_score;
@@ -159,6 +182,8 @@ public:
   HandEval evaluate_hand(const std::vector<Card> &hand);
 
   void play_hand(const std::vector<Card> &hand);
+
+  void use_item(std::size_t index);
 
   std::vector<Card> discard(std::vector<Card> hand,
                             std::vector<std::size_t> chosen_card_indices);
