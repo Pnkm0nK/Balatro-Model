@@ -31,3 +31,16 @@ std::vector<Card> Deck::deal(int cards_in_hand, int max_cards_in_hand) {
   }
   return dealt_cards;
 }
+
+void Deck::collect(const Card &card) {
+  used_cards.push_back(card);
+}
+
+void Deck::finish_round(std::vector<Card> &hand) {
+  // Return the current card values, including permanent Tarot changes.
+  deck.insert(deck.end(), used_cards.begin(), used_cards.end());
+  deck.insert(deck.end(), hand.begin(), hand.end());
+  used_cards.clear();
+  hand.clear();
+  shuffle();
+}

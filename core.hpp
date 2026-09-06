@@ -25,6 +25,7 @@ inline constexpr std::array<int, 12> planet_mult_additions = {1, 1, 1, 2, 3, 2,
                                                               2, 3, 4, 3, 4, 3};
 
 class GameState;
+class Card;
 
 enum class Context {
   ROUND,
@@ -37,9 +38,15 @@ public:
   int buy_cost;
   int sell_price;
 
-  virtual void activate(GameState &state);
-
   virtual ~Item() = default;
+
+  virtual bool can_activate(
+      const std::vector<Card> &hand,
+      const std::vector<std::size_t> &selected_indices) const { return true; }
+
+  virtual void activate(
+      GameState &state, std::vector<Card> &hand,
+      const std::vector<std::size_t> &selected_indices) {}
 
   // Non-copyable item types return nullptr until they implement cloning.
   virtual std::unique_ptr<Item> clone() const { return nullptr; }
@@ -55,7 +62,12 @@ public:
 
   void set_sell_price(int price);
 
-  void activate(GameState &state) override;
+  bool can_activate(
+      const std::vector<Card> &hand,
+      const std::vector<std::size_t> &selected_indices) const override;
+
+  void activate(GameState &state, std::vector<Card> &hand,
+                const std::vector<std::size_t> &selected_indices) override;
 
   std::unique_ptr<Item> clone() const override;
 };
@@ -68,7 +80,8 @@ public:
 
   PlanetCard(Planet planet_type);
 
-  void activate(GameState &game_state) override;
+  void activate(GameState &game_state, std::vector<Card> &hand,
+                const std::vector<std::size_t> &selected_indices) override;
 
   std::unique_ptr<Item> clone() const override;
 };
@@ -97,6 +110,13 @@ public:
   void shuffle();
 
   std::vector<Card> deal(int cards_in_hand, int max_cards_in_hand);
+
+  void collect(const Card &card);
+
+  void finish_round(std::vector<Card> &hand);
+
+private:
+  std::vector<Card> used_cards;
 };
 
 struct HandEval {
@@ -223,7 +243,8 @@ public:
 
   void play_hand(const std::vector<Card> &hand);
 
-  void use_item(std::size_t index);
+  bool use_item(std::size_t index, std::vector<Card> &hand,
+                const std::vector<std::size_t> &selected_indices = {});
 
   std::vector<Card> discard(std::vector<Card> hand,
                             std::vector<std::size_t> chosen_card_indices);

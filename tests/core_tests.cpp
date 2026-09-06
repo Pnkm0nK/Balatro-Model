@@ -78,6 +78,41 @@ const std::vector<Card> pair_hand = {
     {Suit::HEARTS, CardRank::TWO}, {Suit::CLUBS, CardRank::TWO},
     {Suit::SPADES, CardRank::ACE}};
 
+struct ItemObservation {
+  int activations = 0;
+  int destructions = 0;
+  std::size_t inventory_size_at_activation = 0;
+  std::vector<std::size_t> selection;
+};
+
+// A deterministic item tests inventory behavior without depending on a Tarot effect.
+class ObservedItem : public Item {
+public:
+  std::shared_ptr<ItemObservation> observation;
+
+  explicit ObservedItem(std::shared_ptr<ItemObservation> observation)
+      : observation(std::move(observation)) {
+    buy_cost = 3;
+    sell_price = 1;
+  }
+
+  ~ObservedItem() override { ++observation->destructions; }
+
+  void activate(GameState &state, std::vector<Card> &hand,
+                const std::vector<std::size_t> &indices) override {
+    ++observation->activations;
+    observation->inventory_size_at_activation = state.inventory.size();
+    observation->selection = indices;
+    if (!indices.empty() && indices.front() < hand.size()) {
+      hand[indices.front()].suit = Suit::DIAMONDS;
+    }
+  }
+
+  std::unique_ptr<Item> clone() const override {
+    return std::make_unique<ObservedItem>(*this);
+  }
+};
+
 void test_cards() {
   const std::array expected_chips = {2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10, 11};
   for (std::size_t i = 0; i < ALL_CARD_RANKS.size(); ++i) {
@@ -353,7 +388,7 @@ int main() {
     game.cur_blind_score_req = 7;
     ConsoleSession console("0 x d\n0 x p\n");
     expect_equal(game.start_new_round(), true);
-    expect_equal(game.deck.deck.size(), 43u);
+    expect_equal(game.deck.deck.size(), 52u); // Entire deck restored after the round.
   });
 
   run_test("exhausted discards", "zero discards; attempt discard then play", "discard rejected; only one card scored", [] {
@@ -362,7 +397,7 @@ int main() {
     game.cur_blind_score_req = 7;
     ConsoleSession console("0 x d\n0 x p\n");
     expect_equal(game.start_new_round(), true);
-    expect_equal(game.deck.deck.size(), 8u);
+    expect_equal(game.deck.deck.size(), 16u); // Includes returned hand and played card.
     expect_equal(game.hands_played, 1u);
     expect_equal(game.discards_left, 0);
     expect_equal(console.output.str().find("No discards left") != std::string::npos, true);
@@ -408,6 +443,159 @@ int main() {
     expect_equal(console.output.str().find(
         "  [0] A♠\n  [1] K♥\n  [2] 2♥\n  [3] 2♠\n") != std::string::npos, true);
     expect_equal(console.output.str().find("Played cards: [A ♠]") != std::string::npos, true);
+  });
+
+  run_test("permanent changes survive round cleanup", "modified dealt cards, used pile, three rounds", "52 cards restored; changes persist; restart resets", [] {
+    GameState game;
+    auto hand = game.deck.deal(0, 8);
+    hand[0].suit = Suit::DIAMONDS;
+    hand[0].edition = Edition::FOIL;
+    hand[0].chips = 99;
+    hand[1].suit = Suit::SPADES;
+    auto expected = hand;
+    expected.insert(expected.end(), game.deck.deck.begin(), game.deck.deck.end());
+    const auto expected_keys = sorted_keys(expected);
+    hand = game.discard(hand, {0});
+    expect_equal(game.deck.deck.size(), 44u); // Used cards cannot be drawn yet.
+    game.deck.finish_round(hand);
+    expect_equal(hand.empty(), true);
+    expect_equal(sorted_keys(game.deck.deck) == expected_keys, true);
+    for (int round = 0; round < 3; ++round) {
+      hand = game.deck.deal(0, 52);
+      expect_equal(sorted_keys(hand) == expected_keys, true);
+      hand = game.discard(hand, {0, 3, 7});
+      game.deck.finish_round(hand);
+      expect_equal(sorted_keys(game.deck.deck) == expected_keys, true);
+      game.deck.finish_round(hand); // Repeated cleanup must not duplicate cards.
+      expect_equal(game.deck.deck.size(), 52u);
+    }
+    game = GameState{};
+    const Deck fresh;
+    expect_equal(sorted_keys(game.deck.deck) == sorted_keys(fresh.deck), true);
+  });
+
+  run_test("used cards stay out until round end", "draw all 52; discard two", "no mid-round redraw; all 52 return afterward", [] {
+    GameState game;
+    const auto original = sorted_keys(game.deck.deck);
+    auto hand = game.deck.deal(0, 52);
+    hand = game.discard(hand, {0, 1});
+    expect_equal(hand.size(), 50u);
+    expect_equal(game.deck.deal(0, 8).empty(), true);
+    game.deck.finish_round(hand);
+    expect_equal(hand.empty(), true);
+    expect_equal(sorted_keys(game.deck.deck) == original, true);
+  });
+
+  run_test("deck returns after consecutive wins", "two rounds; discard then play in each", "original deck restored after each win", [] {
+    GameState game;
+    const auto original = sorted_keys(game.deck.deck);
+    for (int round = 0; round < 2; ++round) {
+      game.cur_blind_score_req = 1;
+      ConsoleSession console("0 x d\n0 x p\nc\n");
+      expect_equal(game.start_new_round(), true);
+      expect_equal(game.round, round + 1);
+      expect_equal(sorted_keys(game.deck.deck) == original, true);
+    }
+  });
+
+  run_test("deck returns after loss", "four single-card plays; quit", "all cards restored after losing round", [] {
+    GameState game;
+    const auto original = sorted_keys(game.deck.deck);
+    ConsoleSession console("0 x p\n0 x p\n0 x p\n0 x p\nq\n");
+    expect_equal(game.start_new_round(), false);
+    expect_equal(game.hands_left, 0);
+    expect_equal(sorted_keys(game.deck.deck) == original, true);
+  });
+
+  run_test("deck returns after interrupted input", "discard one card; input ends", "draw pile, used cards and remaining hand reunited", [] {
+    GameState game;
+    const auto original = sorted_keys(game.deck.deck);
+    ConsoleSession console("0 x d\n");
+    expect_equal(game.start_new_round(), false);
+    expect_equal(sorted_keys(game.deck.deck) == original, true);
+    expect_equal(game.hands_played, 0u);
+    expect_equal(game.discards_left, 3);
+  });
+
+  run_test("inventory consumption and hand reference", "full inventory; use middle item with indices 2, 0", "slot freed before activation; real hand changed; item destroyed once", [] {
+    GameState game;
+    game.max_inventory_slots = 3;
+    auto observation = std::make_shared<ItemObservation>();
+    game.inventory.push_back(std::make_unique<Item>());
+    game.inventory.push_back(std::make_unique<ObservedItem>(observation));
+    game.inventory.push_back(std::make_unique<Item>());
+    const Item *first = game.inventory[0].get();
+    const Item *last = game.inventory[2].get();
+    std::vector<Card> hand = pair_hand;
+    expect_equal(game.use_item(1, hand, {2, 0}), true);
+    expect_equal(observation->activations, 1);
+    expect_equal(observation->destructions, 1);
+    expect_equal(observation->inventory_size_at_activation, 2u);
+    expect_equal(observation->selection == std::vector<std::size_t>{0, 2}, true);
+    expect_equal(game.inventory.size(), 2u);
+    expect_equal(game.inventory[0].get() == first && game.inventory[1].get() == last, true);
+    expect_equal(hand[0].suit == Suit::DIAMONDS, true);
+    expect_equal(hand[1].suit == pair_hand[1].suit && hand[2].suit == pair_hand[2].suit, true);
+  });
+
+  run_test("items consumed regardless of selection", "empty selection; invalid indices", "both items activate and are consumed", [] {
+    GameState game;
+    std::vector<Card> hand;
+    auto observation = std::make_shared<ItemObservation>();
+    for (const auto &selection : std::vector<std::vector<std::size_t>>{{}, {999}}) {
+      game.inventory.push_back(std::make_unique<ObservedItem>(observation));
+      expect_equal(game.use_item(0, hand, selection), true);
+      expect_equal(game.inventory.empty(), true);
+      expect_equal(observation->selection == selection, true);
+    }
+    expect_equal(observation->activations, 2);
+    expect_equal(observation->destructions, 2);
+  });
+
+  run_test("invalid inventory index preserves items", "out-of-range index and null slot", "exception; other items retained and not activated", [] {
+    GameState game;
+    std::vector<Card> hand;
+    auto observation = std::make_shared<ItemObservation>();
+    game.inventory.push_back(std::make_unique<ObservedItem>(observation));
+    game.inventory.push_back(nullptr);
+    const Item *original = game.inventory[0].get();
+    for (const auto index : {1u, 2u}) {
+      bool threw = false;
+      try { game.use_item(index, hand); }
+      catch (const std::out_of_range &) { threw = true; }
+      expect_equal(threw, true);
+      expect_equal(game.inventory.size(), 2u);
+      expect_equal(game.inventory[0].get() == original, true);
+    }
+    expect_equal(observation->activations, 0);
+    expect_equal(observation->destructions, 0);
+  });
+
+  run_test("inventory and history survive wins, reset on restart", "stored item and cloned history; win; restart", "retained after win; released and cleared after restart", [] {
+    GameState game;
+    auto observation = std::make_shared<ItemObservation>();
+    game.inventory.push_back(std::make_unique<ObservedItem>(observation));
+    game.last_used_card = game.inventory[0]->clone();
+    game.inventory[0]->sell_price = 99;
+    expect_equal(game.last_used_card->sell_price, 1);
+    const Item *stored = game.inventory[0].get();
+    const Item *history = game.last_used_card.get();
+    {
+      ConsoleSession console("c\n");
+      game.win_round();
+    }
+    expect_equal(game.inventory[0].get() == stored, true);
+    expect_equal(game.last_used_card.get() == history, true);
+    {
+      ConsoleSession console("r\n");
+      expect_equal(game.lose_round(), true);
+    }
+    expect_equal(game.inventory.empty(), true);
+    expect_equal(game.last_used_card == nullptr, true);
+    expect_equal(observation->destructions, 2);
+    expect_equal(game.max_inventory_slots, 2);
+    expect_equal(game.total_score, 0u);
+    expect_equal(game.deck.deck.size(), 52u);
   });
 
   std::cout << "\nCore tests: " << passed_tests << " passed, "

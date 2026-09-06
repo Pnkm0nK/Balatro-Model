@@ -1,5 +1,6 @@
 #include "core.hpp"
 #include <algorithm>
+#include <random>
 
 enum class TarotType {
   THE_FOOL,
@@ -26,6 +27,27 @@ enum class TarotType {
   THE_WORLD,
 };
 
+namespace {
+
+void change_selected_suits(std::vector<Card> &hand,
+                           const std::vector<std::size_t> &selected_indices,
+                           Suit suit) {
+  auto indices = selected_indices;
+  std::sort(indices.begin(), indices.end());
+  indices.erase(std::unique(indices.begin(), indices.end()), indices.end());
+
+  std::size_t changed = 0;
+  for (const auto index : indices) {
+    if (index >= hand.size() || changed == 3) {
+      break;
+    }
+    hand[index].suit = suit;
+    ++changed;
+  }
+}
+
+} // namespace
+
 TarotCard::TarotCard(TarotType name, int buy_cost, int sell_price) : name(name) {
   this->buy_cost = buy_cost;
   this->sell_price = sell_price;
@@ -39,7 +61,20 @@ std::unique_ptr<Item> TarotCard::clone() const {
   return std::make_unique<TarotCard>(*this);
 }
 
-void TarotCard::activate(GameState &state) {
+bool TarotCard::can_activate(
+    const std::vector<Card> &hand,
+    const std::vector<std::size_t> &selected_indices) const {
+  if (name != TarotType::DEATH) {
+    return true;
+  }
+  return selected_indices.size() == 2 &&
+         selected_indices[0] != selected_indices[1] &&
+         selected_indices[0] < hand.size() && selected_indices[1] < hand.size();
+}
+
+void TarotCard::activate(
+    GameState &state, std::vector<Card> &hand,
+    const std::vector<std::size_t> &selected_indices) {
   // Once an effect below is implemented, record only successful use with:
   // state.last_used_card = clone();
   // Placeholder effects and The Fool must leave the history unchanged.
@@ -77,7 +112,25 @@ void TarotCard::activate(GameState &state) {
     break;
   }
   case TarotType::THE_EMPEROR: {
-    // TODO: Create up to 2 random Tarots if there is room.
+    static std::mt19937 generator(std::random_device{}());
+    std::uniform_int_distribution<int> tarot_type(
+        static_cast<int>(TarotType::THE_FOOL),
+        static_cast<int>(TarotType::THE_WORLD));
+    constexpr int tarot_buy_cost = 3;
+    constexpr int tarot_sell_price = 1;
+
+    if (state.max_inventory_slots > 0) {
+      for (int created = 0;
+           created < 2 && state.inventory.size() <
+                              static_cast<std::size_t>(state.max_inventory_slots);
+           ++created) {
+        state.inventory.push_back(std::make_unique<TarotCard>(
+            static_cast<TarotType>(tarot_type(generator)),
+            tarot_buy_cost, tarot_sell_price));
+      }
+    }
+    // The Emperor was used even if there was no room to create cards.
+    state.last_used_card = clone();
     break;
   }
   case TarotType::THE_HIEROPHANT: {
@@ -116,7 +169,18 @@ void TarotCard::activate(GameState &state) {
     break;
   }
   case TarotType::DEATH: {
-    // TODO: Turn the left selected card into the right selected card.
+    if (selected_indices.size() != 2) {
+      return;
+    }
+    const auto left = std::min(selected_indices[0], selected_indices[1]);
+    const auto right = std::max(selected_indices[0], selected_indices[1]);
+    if (left == right || right >= hand.size()) {
+      return;
+    }
+
+    // Copy all card properties; left/right refers to position in the hand.
+    hand[left] = hand[right];
+    state.last_used_card = clone();
     break;
   }
   case TarotType::TEMPERANCE: {
@@ -139,15 +203,18 @@ void TarotCard::activate(GameState &state) {
     break;
   }
   case TarotType::THE_STAR: {
-    // TODO: Convert up to 3 selected cards to Diamonds.
+    change_selected_suits(hand, selected_indices, Suit::DIAMONDS);
+    state.last_used_card = clone();
     break;
   }
   case TarotType::THE_MOON: {
-    // TODO: Convert up to 3 selected cards to Clubs.
+    change_selected_suits(hand, selected_indices, Suit::CLUBS);
+    state.last_used_card = clone();
     break;
   }
   case TarotType::THE_SUN: {
-    // TODO: Convert up to 3 selected cards to Hearts.
+    change_selected_suits(hand, selected_indices, Suit::HEARTS);
+    state.last_used_card = clone();
     break;
   }
   case TarotType::JUDGEMENT: {
@@ -155,7 +222,8 @@ void TarotCard::activate(GameState &state) {
     break;
   }
   case TarotType::THE_WORLD: {
-    // TODO: Convert up to 3 selected cards to Spades.
+    change_selected_suits(hand, selected_indices, Suit::SPADES);
+    state.last_used_card = clone();
     break;
   }
   }

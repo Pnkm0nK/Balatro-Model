@@ -270,15 +270,26 @@ void GameState::play_hand(const std::vector<Card> &hand) {
   this->hands_left--;
 }
 
-void GameState::use_item(std::size_t index) {
+bool GameState::use_item(
+    std::size_t index, std::vector<Card> &hand,
+    const std::vector<std::size_t> &selected_indices) {
   if (index >= inventory.size() || !inventory[index]) {
     throw std::out_of_range("Invalid inventory item index");
+  }
+
+  // Card position determines left/right, regardless of selection input order.
+  auto selection = selected_indices;
+  std::sort(selection.begin(), selection.end());
+
+  if (!inventory[index]->can_activate(hand, selection)) {
+    return false;
   }
 
   // Free the slot, but keep the item alive until activation finishes.
   auto item = std::move(inventory[index]);
   inventory.erase(inventory.begin() + index);
-  item->activate(*this);
+  item->activate(*this, hand, selection);
+  return true;
 }
 
 void GameState::win_round() {
@@ -319,6 +330,7 @@ GameState::discard(std::vector<Card> hand,
   std::sort(chosen_card_indices.rbegin(), chosen_card_indices.rend());
 
   for (const std::size_t index : chosen_card_indices) {
+    deck.collect(hand[index]);
     hand.erase(hand.begin() + index);
   }
 
@@ -375,6 +387,7 @@ bool GameState::start_new_round() {
     print_round_status(*this);
     print_hand(hand);
     if (hand.empty()) {
+      deck.finish_round(hand);
       return lose_round();
     }
 
@@ -386,6 +399,7 @@ bool GameState::start_new_round() {
     while (chosen_cards_indices.size() < max_cards_played) {
       char choice;
       if (!(std::cin >> choice)) {
+        deck.finish_round(hand);
         return false;
       }
       if (!std::isdigit(static_cast<unsigned char>(choice))) {
@@ -399,6 +413,7 @@ bool GameState::start_new_round() {
               << std::endl;
     char option;
     if (!(std::cin >> option)) {
+      deck.finish_round(hand);
       return false;
     }
     option = std::tolower(static_cast<unsigned char>(option));
@@ -443,12 +458,15 @@ bool GameState::start_new_round() {
     hand = discard(hand, chosen_cards_indices);
 
     if (this->round_score >= cur_blind_score_req) {
+      deck.finish_round(hand);
       win_round();
       return true;
     } else if (this->hands_left == 0) {
+      deck.finish_round(hand);
       return lose_round();
     }
   }
+  deck.finish_round(hand);
   return lose_round();
 }
 
