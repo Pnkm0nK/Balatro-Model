@@ -106,7 +106,8 @@ struct HandEval {
 
 class Voucher {
 public:
-  int buy_cost;
+  std::string name;
+  int buy_cost = 10;
   virtual ~Voucher() = default;
   virtual void activate(GameState &state) = 0;
 };
@@ -174,10 +175,24 @@ public:
   int hands_left;
   int discards_left;
 
+  // Voucher and shop modifiers
+  int shop_item_slots = 2;
+  double shop_discount = 0.0;
+  double edition_rate_mult = 1.0;
+  int reroll_cost = 5;
+  int reroll_discount = 0;
+  int interest_cap = 5;
+  double tarot_rate_mult = 1.0;
+  double planet_rate_mult = 1.0;
+  bool can_buy_playing_cards_in_shop = false;
+  bool telescope = false;
+  int boss_rerolls_per_ante = 0;
+  std::vector<std::string> redeemed_vouchers;
+
   std::array<int, 12> hand_chips = base_hand_chips;
   std::array<int, 12> hand_mult = base_hand_mult;
 
-  std::array<int, 13> hand_levels;
+  std::array<int, 12> hand_levels = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 
   std::vector<Joker *> jokers;
   std::vector<std::unique_ptr<Item>> inventory;
